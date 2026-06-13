@@ -245,6 +245,92 @@ button {
   outline: none;
 }
 
+.fretboard-layout {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.degree-selector {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.degree-option {
+  display: grid;
+  grid-template-rows: 48px minmax(72px, auto);
+  gap: 6px;
+  min-width: 0;
+}
+
+.degree-option button {
+  min-width: 0;
+  border: 1px solid rgba(91, 105, 109, 0.28);
+  border-radius: 6px;
+  background: #f8fbfb;
+  color: #263237;
+  font-size: 16px;
+  font-weight: 900;
+  padding: 6px;
+}
+
+.degree-option button:hover:not(:disabled),
+.degree-option button.active {
+  border-color: #172023;
+  background: #172023;
+  color: #f9fbfb;
+}
+
+.degree-option button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.degree-option button:focus {
+  box-shadow: 0 0 0 3px rgba(34, 119, 166, 0.14);
+  outline: none;
+}
+
+.degree-chord-copy {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  color: #1e292d;
+  text-align: center;
+}
+
+.degree-chord-copy strong,
+.degree-chord-copy span,
+.degree-chord-copy small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.degree-chord-copy strong {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.degree-chord-copy span {
+  color: #404c50;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.degree-chord-copy small {
+  color: #657173;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 .fretboard-viewport {
   overflow-x: auto;
   padding: 8px 2px 12px;

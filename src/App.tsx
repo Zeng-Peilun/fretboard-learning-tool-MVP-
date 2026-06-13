@@ -21,8 +21,8 @@ import {
   TUNING_PRESETS
 } from "./domain/fretboard";
 import { describeTargetPitchClasses, diatonicChordTargets, namedChordTargets, scaleTargets } from "./domain/intervals";
-import { PC_COMPACT_NAMES, pcToCompactName } from "./domain/notes";
-import type { BoxRange, FretCell, HighlightedFretCell, TargetPitch } from "./domain/types";
+import { PC_COMPACT_NAMES, pc, pcToCompactName } from "./domain/notes";
+import type { BoxRange, FretCell, HighlightedFretCell, ScaleTemplate, TargetPitch } from "./domain/types";
 
 type LearningMode = "named-chord" | "diatonic-chord";
 type DiatonicDisplayMode = "arpeggio" | "scale";
@@ -30,6 +30,22 @@ type SelectionPoint = Pick<FretCell, "displayString" | "fret" | "internalString"
 type SelectionDraft = {
   anchor: SelectionPoint;
   focus: SelectionPoint;
+};
+type DiatonicChordSummary = {
+  fullName: string;
+  qualityName: string;
+  symbol: string;
+};
+
+const ROMAN_DEGREES = ["I", "II", "III", "IV", "V", "VI", "VII"] as const;
+const DEGREE_OPTIONS = ROMAN_DEGREES.map((roman, index) => ({
+  degree: index + 1,
+  roman
+}));
+const EMPTY_DIATONIC_CHORD_SUMMARY: DiatonicChordSummary = {
+  fullName: "",
+  qualityName: "",
+  symbol: ""
 };
 
 const OCTAVE_PALETTE = [
@@ -71,6 +87,7 @@ export function App() {
   const stringCount = Math.max(tuningNotes.length, 1);
   const selectedScale = SCALE_TEMPLATES.find((scale) => scale.id === scaleId) ?? SCALE_TEMPLATES[0];
   const selectedChord = CHORD_TEMPLATES.find((chord) => chord.id === chordId) ?? CHORD_TEMPLATES[0];
+  const maxDiatonicDegree = Math.min(ROMAN_DEGREES.length, selectedScale.offsets.length);
   const boxPresets = useMemo(() => createBoxPresets(stringCount, fretCount), [stringCount, fretCount]);
   const selectedBoxPreset = boxPresets.find((preset) => preset.id === boxPresetId);
   const currentBox = useMemo(
@@ -113,27 +130,39 @@ export function App() {
   }, [fretCount, tuningNotes]);
 
   const targetState = useMemo(() => {
-    const safeDegree = clamp(degree, 1, selectedScale.offsets.length);
+    const safeDegree = clamp(degree, 1, maxDiatonicDegree);
     const targets =
       learningMode === "named-chord"
         ? namedChordTargets(rootPc, selectedChord)
         : diatonicDisplayMode === "scale"
           ? scaleTargets(rootPc, selectedScale)
           : diatonicChordTargets(rootPc, selectedScale, safeDegree, stackSize);
+    const inferredChord =
+      learningMode === "diatonic-chord" && diatonicDisplayMode === "arpeggio" ? inferChordSummary(targets) : null;
 
     const title =
       learningMode === "named-chord"
         ? `${PC_COMPACT_NAMES[rootPc]} ${selectedChord.symbol}`
         : diatonicDisplayMode === "scale"
           ? `${PC_COMPACT_NAMES[rootPc]} ${selectedScale.name}`
-          : `${PC_COMPACT_NAMES[rootPc]} ${selectedScale.name} · ${safeDegree}级`;
+          : `${PC_COMPACT_NAMES[rootPc]} ${selectedScale.name} · ${ROMAN_DEGREES[safeDegree - 1]}级 · ${inferredChord?.symbol ?? ""}`;
 
     return {
       targets,
       title,
       targetNames: describeTargetPitchClasses(targets)
     };
-  }, [degree, diatonicDisplayMode, learningMode, rootPc, selectedChord, selectedScale, stackSize]);
+  }, [degree, diatonicDisplayMode, learningMode, maxDiatonicDegree, rootPc, selectedChord, selectedScale, stackSize]);
+
+  const degreeChordSummaries = useMemo(
+    () =>
+      DEGREE_OPTIONS.map(({ degree: optionDegree }) =>
+        optionDegree <= maxDiatonicDegree
+          ? describeDiatonicChord(rootPc, selectedScale, optionDegree, stackSize)
+          : EMPTY_DIATONIC_CHORD_SUMMARY
+      ),
+    [maxDiatonicDegree, rootPc, selectedScale, stackSize]
+  );
 
   const highlightedState = useMemo(() => {
     const cellsInBox = currentBox ? filterByBox(fretboardState.cells, currentBox) : [];
@@ -176,8 +205,8 @@ export function App() {
   }, [fretCount]);
 
   useEffect(() => {
-    setDegree((value) => clamp(value, 1, selectedScale.offsets.length));
-  }, [selectedScale]);
+    setDegree((value) => clamp(value, 1, maxDiatonicDegree));
+  }, [maxDiatonicDegree]);
 
   const fixPendingBoxCallback = useCallback(() => {
     if (!pendingBox) {
@@ -478,17 +507,6 @@ export function App() {
                 </div>
               </Field>
 
-              <Field label="级数">
-                <input
-                  type="number"
-                  min={1}
-                  max={selectedScale.offsets.length}
-                  value={degree}
-                  disabled={diatonicDisplayMode === "scale"}
-                  onChange={(event) => setDegree(clamp(Number(event.target.value), 1, selectedScale.offsets.length))}
-                />
-              </Field>
-
               <Field label="叠置层数">
                 <input
                   type="number"
@@ -578,46 +596,60 @@ export function App() {
             </div>
           </div>
 
-          <div className="fretboard-viewport" ref={fretboardViewportRef}>
-            <div
-              className="fretboard-grid"
-              style={
-                {
-                  "--fret-count": fretCount + 1,
-                  "--board-min-width": `${76 + (fretCount + 1) * 54}px`
-                } as CSSProperties
-              }
-            >
-              <div className="corner-cell">弦 / 品</div>
-              {fretNumbers.map((fret) => (
-                <div className={`fret-header ${fret === 1 ? "nut-boundary-header" : ""}`} key={fret}>
-                  {fret}
-                </div>
-              ))}
+          <div className="fretboard-layout">
+            <div className="fretboard-viewport" ref={fretboardViewportRef}>
+              <div
+                className="fretboard-grid"
+                style={
+                  {
+                    "--fret-count": fretCount + 1,
+                    "--board-min-width": `${76 + (fretCount + 1) * 54}px`
+                  } as CSSProperties
+                }
+              >
+                <div className="corner-cell">弦 / 品</div>
+                {fretNumbers.map((fret) => (
+                  <div className={`fret-header ${fret === 1 ? "nut-boundary-header" : ""}`} key={fret}>
+                    {fret}
+                  </div>
+                ))}
 
-              {rowDisplayStrings.map((displayString) => {
-                const internalString = displayStringToInternal(displayString, stringCount);
-                const openCell = cellMap.get(`${internalString}:0`);
+                {rowDisplayStrings.map((displayString) => {
+                  const internalString = displayStringToInternal(displayString, stringCount);
+                  const openCell = cellMap.get(`${internalString}:0`);
 
-                return (
-                  <Row
-                    box={currentBox}
-                    cellMap={cellMap}
-                    colorByOctave={highlightedState.colorByOctave}
-                    displayString={displayString}
-                    fretNumbers={fretNumbers}
-                    highlightMap={highlightedState.highlightMap}
-                    internalString={internalString}
-                    key={displayString}
-                    onBeginSelection={beginCellSelection}
-                    onFinishSelection={finishCellSelection}
-                    onUpdateSelection={updateCellSelection}
-                    openCell={openCell}
-                    pendingBox={pendingBox}
-                  />
-                );
-              })}
+                  return (
+                    <Row
+                      box={currentBox}
+                      cellMap={cellMap}
+                      colorByOctave={highlightedState.colorByOctave}
+                      displayString={displayString}
+                      fretNumbers={fretNumbers}
+                      highlightMap={highlightedState.highlightMap}
+                      internalString={internalString}
+                      key={displayString}
+                      onBeginSelection={beginCellSelection}
+                      onFinishSelection={finishCellSelection}
+                      onUpdateSelection={updateCellSelection}
+                      openCell={openCell}
+                      pendingBox={pendingBox}
+                    />
+                  );
+                })}
+              </div>
             </div>
+
+            {learningMode === "diatonic-chord" ? (
+              <DegreeSelector
+                chordSummaries={degreeChordSummaries}
+                maxDegree={maxDiatonicDegree}
+                selectedDegree={diatonicDisplayMode === "arpeggio" ? degree : null}
+                onSelectDegree={(nextDegree) => {
+                  setDegree(nextDegree);
+                  setDiatonicDisplayMode("arpeggio");
+                }}
+              />
+            ) : null}
           </div>
 
           {pendingBox ? (
@@ -680,6 +712,46 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   );
 }
 
+function DegreeSelector({
+  chordSummaries,
+  maxDegree,
+  onSelectDegree,
+  selectedDegree
+}: {
+  chordSummaries: DiatonicChordSummary[];
+  maxDegree: number;
+  onSelectDegree: (degree: number) => void;
+  selectedDegree: number | null;
+}) {
+  return (
+    <div className="degree-selector" aria-label="调内和弦级数">
+      {DEGREE_OPTIONS.map(({ degree: optionDegree, roman }, index) => {
+        const isActive = optionDegree === selectedDegree;
+        const isDisabled = optionDegree > maxDegree;
+        const chordSummary = chordSummaries[index];
+
+        return (
+          <div className="degree-option" key={roman}>
+            <button
+              className={isActive ? "active" : ""}
+              disabled={isDisabled}
+              type="button"
+              onClick={() => onSelectDegree(optionDegree)}
+            >
+              {roman}
+            </button>
+            <div className="degree-chord-copy" aria-hidden={isDisabled}>
+              <strong>{isDisabled ? "\u00a0" : (chordSummary?.symbol ?? "\u00a0")}</strong>
+              <span>{isDisabled ? "\u00a0" : (chordSummary?.qualityName ?? "\u00a0")}</span>
+              <small>{isDisabled ? "\u00a0" : (chordSummary?.fullName ?? "\u00a0")}</small>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Row({
   box,
   cellMap,
@@ -715,47 +787,131 @@ function Row({
       </div>
       {fretNumbers.map((fret) => {
         const cell = cellMap.get(`${internalString}:${fret}`);
-        const highlightedCell = cell ? highlightMap.get(coordKey(cell)) : undefined;
-        const inBox = cell && box ? isCellInBox(cell, box) : false;
-        const inPendingBox = cell && pendingBox ? isCellInBox(cell, pendingBox) : false;
-        const cellColor = cell
-          ? (colorByOctave.get(cell.note.octave) ?? colorForOctave(cell.note.octave))
-          : colorForOctave(-1);
-        const className = [
-          "fret-cell",
-          inBox ? "in-box" : "out-box",
-          inPendingBox ? "pending-cell" : "",
-          highlightedCell ? "target" : "",
-          fret === 1 ? "nut-boundary-cell" : "",
-          fret === fretNumbers[fretNumbers.length - 1] ? "end-cell" : ""
-        ]
-          .filter(Boolean)
-          .join(" ");
 
         return (
-          <div
-            className={className}
-            data-display-string={cell?.displayString}
-            data-fret={cell?.fret}
-            data-internal-string={cell?.internalString}
+          <FretCellTile
+            box={box}
+            cell={cell}
+            colorByOctave={colorByOctave}
+            highlightMap={highlightMap}
+            isEndCell={fret === fretNumbers[fretNumbers.length - 1]}
+            isNutBoundary={fret === 1}
             key={fret}
-            onPointerDown={cell ? (event) => onBeginSelection(cell, event) : undefined}
-            onPointerEnter={cell ? (event) => onUpdateSelection(cell, event) : undefined}
-            onPointerMove={cell ? (event) => onUpdateSelection(cell, event) : undefined}
-            onPointerUp={onFinishSelection}
-            style={{ "--string-color": cellColor, "--note-color": cellColor } as CSSProperties}
-            title={
-              cell
-                ? `${cell.note.name} · MIDI ${cell.midi}${highlightedCell ? ` · ${formatMatches(highlightedCell.matches)}` : ""}`
-                : undefined
-            }
-          >
-            {highlightedCell ? <span className="note-dot">{pcToCompactName(highlightedCell.note.pc)}</span> : null}
-          </div>
+            onBeginSelection={onBeginSelection}
+            onFinishSelection={onFinishSelection}
+            onUpdateSelection={onUpdateSelection}
+            pendingBox={pendingBox}
+          />
         );
       })}
     </>
   );
+}
+
+function FretCellTile({
+  box,
+  cell,
+  colorByOctave,
+  highlightMap,
+  isEndCell,
+  isNutBoundary,
+  onBeginSelection,
+  onFinishSelection,
+  onUpdateSelection,
+  pendingBox
+}: {
+  box: BoxRange | null;
+  cell?: FretCell;
+  colorByOctave: Map<number, string>;
+  highlightMap: Map<string, HighlightedFretCell>;
+  isEndCell: boolean;
+  isNutBoundary: boolean;
+  onBeginSelection: (cell: FretCell, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onFinishSelection: () => void;
+  onUpdateSelection: (cell: FretCell, event: ReactPointerEvent<HTMLDivElement>) => void;
+  pendingBox: BoxRange | null;
+}) {
+  const highlightedCell = cell ? highlightMap.get(coordKey(cell)) : undefined;
+  const inBox = cell && box ? isCellInBox(cell, box) : false;
+  const inPendingBox = cell && pendingBox ? isCellInBox(cell, pendingBox) : false;
+  const cellColor = cell
+    ? (colorByOctave.get(cell.note.octave) ?? colorForOctave(cell.note.octave))
+    : colorForOctave(-1);
+  const className = [
+    "fret-cell",
+    inBox ? "in-box" : "out-box",
+    inPendingBox ? "pending-cell" : "",
+    highlightedCell ? "target" : "",
+    isNutBoundary ? "nut-boundary-cell" : "",
+    isEndCell ? "end-cell" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div
+      className={className}
+      data-display-string={cell?.displayString}
+      data-fret={cell?.fret}
+      data-internal-string={cell?.internalString}
+      onPointerDown={cell ? (event) => onBeginSelection(cell, event) : undefined}
+      onPointerEnter={cell ? (event) => onUpdateSelection(cell, event) : undefined}
+      onPointerMove={cell ? (event) => onUpdateSelection(cell, event) : undefined}
+      onPointerUp={onFinishSelection}
+      style={{ "--string-color": cellColor, "--note-color": cellColor } as CSSProperties}
+      title={
+        cell
+          ? `${cell.note.name} · MIDI ${cell.midi}${highlightedCell ? ` · ${formatMatches(highlightedCell.matches)}` : ""}`
+          : undefined
+      }
+    >
+      {highlightedCell ? <span className="note-dot">{pcToCompactName(highlightedCell.note.pc)}</span> : null}
+    </div>
+  );
+}
+
+function describeDiatonicChord(
+  rootPc: number,
+  scaleTemplate: ScaleTemplate,
+  degree: number,
+  stackSize: number
+): DiatonicChordSummary {
+  return inferChordSummary(diatonicChordTargets(rootPc, scaleTemplate, degree, stackSize));
+}
+
+function inferChordSummary(targets: TargetPitch[]): DiatonicChordSummary {
+  if (targets.length === 0) {
+    return {
+      fullName: "",
+      qualityName: "",
+      symbol: ""
+    };
+  }
+
+  const chordRootPc = targets[0].pc;
+  const chordRootName = pcToCompactName(chordRootPc);
+  const normalizedOffsets = targets.map((target) => pc(target.pc - chordRootPc));
+  const matchedTemplate = CHORD_TEMPLATES.find(
+    (template) =>
+      template.offsets.length === normalizedOffsets.length &&
+      template.offsets.every((offset, index) => pc(offset) === normalizedOffsets[index])
+  );
+
+  if (matchedTemplate) {
+    return {
+      fullName: `${chordRootName} ${matchedTemplate.name}`,
+      qualityName: matchedTemplate.name,
+      symbol: matchedTemplate.symbol.replace(/X/g, chordRootName)
+    };
+  }
+
+  const noteNames = targets.map((target) => pcToCompactName(target.pc)).join(" ");
+
+  return {
+    fullName: `${chordRootName} (${noteNames})`,
+    qualityName: "自定义音组",
+    symbol: `${chordRootName} (${noteNames})`
+  };
 }
 
 function formatMatches(matches: TargetPitch[]): string {
