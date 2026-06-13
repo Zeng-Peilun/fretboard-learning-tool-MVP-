@@ -7,9 +7,11 @@
 ## 快速安装依赖
 
 ```bash
-cd /Users/apple/Desktop/有品弦乐乐理
+cd /path/to/your/project
 npm install
 ```
+
+请把 `/path/to/your/project` 替换为你本机实际安装或克隆本项目的位置。
 
 如果本地已经存在 `node_modules/`，通常可以跳过安装步骤。
 

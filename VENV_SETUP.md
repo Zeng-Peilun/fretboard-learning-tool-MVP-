@@ -8,7 +8,7 @@
 
 - **Node.js 版本**: v26.3.0
 - **npm 版本**: 11.16.0
-- **虚拟环境位置**: `/Users/apple/Desktop/有品弦乐乐理/node_modules`
+- **虚拟环境位置**: `/path/to/your/project/node_modules`
 - **Package Lock**: `package-lock.json`（已生成）
 - **配置文件**: `.npmrc`
 - **版本锁定**: `.nvmrc`
@@ -64,7 +64,7 @@ npm run preview
 ## 📂 虚拟环境目录结构
 
 ```
-有品弦乐乐理/
+your-project/
 ├── node_modules/          ← 虚拟环境依赖目录（隔离）
 ├── package.json           ← 项目依赖声明
 ├── package-lock.json      ← 依赖版本锁定
