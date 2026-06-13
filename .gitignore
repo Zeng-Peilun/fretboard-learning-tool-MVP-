@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.DS_Store
+coverage/
+*.log
+.npm-cache/
+*.xlsx
+~$*.xlsx
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+
+# Source notes already consolidated into README.md
+和弦音程库.md
+指板映射与和弦生成数理模型.md
+有品弦乐乐理指板工具.md
+调式音程库.md
