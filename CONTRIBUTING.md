@@ -58,7 +58,7 @@
 
 ```bash
 git clone <repository-url>
-cd 有品弦乐乐理
+cd /path/to/your/project
 ```
 
 安装依赖：

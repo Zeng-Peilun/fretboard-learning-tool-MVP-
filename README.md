@@ -9,9 +9,11 @@ Chinese version: [README-CN.md](README-CN.md)
 ## Quick Dependency Installation
 
 ```bash
-cd /Users/apple/Desktop/Character\ String\ Instrument\ Music\ Theory\ Mapping
+cd /path/to/your/project
 npm install
 ```
+
+Replace `/path/to/your/project` with the folder where you installed or cloned this project.
 
 If `node_modules/` already exists locally, you can usually skip the installation step.
 
