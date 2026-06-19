@@ -20,9 +20,19 @@ import {
   makeBoxFromDisplayRange,
   TUNING_PRESETS
 } from "./domain/fretboard";
-import { describeTargetPitchClasses, diatonicChordTargets, namedChordTargets, scaleTargets } from "./domain/intervals";
-import { PC_COMPACT_NAMES, pc, pcToCompactName } from "./domain/notes";
+import { diatonicChordTargets, namedChordTargets, scaleTargets } from "./domain/intervals";
+import { pc } from "./domain/notes";
 import type { BoxRange, FretCell, HighlightedFretCell, ScaleTemplate, TargetPitch } from "./domain/types";
+import {
+  baseNameForPitchClass,
+  renderNames,
+  resolveNamedChordLetterOffsets,
+  resolveScaleLetterOffsets,
+  ROOT_NOTE_OPTIONS,
+  spellMany,
+  type LetterTrackResolution,
+  type NotationMode
+} from "./view/notation";
 
 type LearningMode = "named-chord" | "diatonic-chord";
 type DiatonicDisplayMode = "arpeggio" | "scale";
@@ -67,12 +77,14 @@ export function App() {
   const [tuningText, setTuningText] = useState(defaultPreset.notes.join(" "));
   const [fretCount, setFretCount] = useState(defaultPreset.defaultFretCount);
   const [learningMode, setLearningMode] = useState<LearningMode>("named-chord");
-  const [rootPc, setRootPc] = useState(0);
+  const [rootNoteId, setRootNoteId] = useState("c");
   const [chordId, setChordId] = useState("major");
   const [scaleId, setScaleId] = useState("ionian");
   const [degree, setDegree] = useState(1);
   const [stackSize, setStackSize] = useState(3);
   const [diatonicDisplayMode, setDiatonicDisplayMode] = useState<DiatonicDisplayMode>("arpeggio");
+  const [notationMode, setNotationMode] = useState<NotationMode>("musician");
+  const [awfulTolerance, setAwfulTolerance] = useState(0);
   const [boxPresetId, setBoxPresetId] = useState("low");
   const [manualDisplayStringStart, setManualDisplayStringStart] = useState(1);
   const [manualDisplayStringEnd, setManualDisplayStringEnd] = useState(defaultPreset.notes.length);
@@ -85,6 +97,8 @@ export function App() {
 
   const tuningNotes = useMemo(() => tuningText.trim().split(/\s+/).filter(Boolean), [tuningText]);
   const stringCount = Math.max(tuningNotes.length, 1);
+  const selectedRoot = ROOT_NOTE_OPTIONS.find((root) => root.id === rootNoteId) ?? ROOT_NOTE_OPTIONS[0];
+  const rootPc = selectedRoot.pc;
   const selectedScale = SCALE_TEMPLATES.find((scale) => scale.id === scaleId) ?? SCALE_TEMPLATES[0];
   const selectedChord = CHORD_TEMPLATES.find((chord) => chord.id === chordId) ?? CHORD_TEMPLATES[0];
   const maxDiatonicDegree = Math.min(ROMAN_DEGREES.length, selectedScale.offsets.length);
@@ -137,31 +151,74 @@ export function App() {
         : diatonicDisplayMode === "scale"
           ? scaleTargets(rootPc, selectedScale)
           : diatonicChordTargets(rootPc, selectedScale, safeDegree, stackSize);
+    const targetDisplayNames = renderTargetDisplayNames(
+      targets,
+      learningMode === "named-chord"
+        ? {
+            type: "named-chord",
+            chordOffsets: selectedChord.offsets
+          }
+        : {
+            type: diatonicDisplayMode === "scale" ? "scale" : "diatonic-chord",
+            degree: safeDegree,
+            scaleId: selectedScale.id,
+            scaleLength: selectedScale.offsets.length
+          },
+      selectedRoot.letter,
+      notationMode,
+      awfulTolerance
+    );
+    const targetNameByPc = makeFirstNameByPitchClass(targets, targetDisplayNames);
     const inferredChord =
-      learningMode === "diatonic-chord" && diatonicDisplayMode === "arpeggio" ? inferChordSummary(targets) : null;
+      learningMode === "diatonic-chord" && diatonicDisplayMode === "arpeggio"
+        ? inferChordSummary(targets, targetDisplayNames)
+        : null;
 
     const title =
       learningMode === "named-chord"
-        ? `${PC_COMPACT_NAMES[rootPc]} ${selectedChord.symbol}`
+        ? selectedChord.symbol.replace(/X/g, selectedRoot.label)
         : diatonicDisplayMode === "scale"
-          ? `${PC_COMPACT_NAMES[rootPc]} ${selectedScale.name}`
-          : `${PC_COMPACT_NAMES[rootPc]} ${selectedScale.name} · ${ROMAN_DEGREES[safeDegree - 1]}级 · ${inferredChord?.symbol ?? ""}`;
+          ? `${selectedRoot.label} ${selectedScale.name}`
+          : `${selectedRoot.label} ${selectedScale.name} · ${ROMAN_DEGREES[safeDegree - 1]}级 · ${inferredChord?.symbol ?? ""}`;
 
     return {
       targets,
       title,
-      targetNames: describeTargetPitchClasses(targets)
+      targetDisplayNames,
+      targetNameByPc,
+      targetNames: describeUniqueTargetNames(targets, targetDisplayNames)
     };
-  }, [degree, diatonicDisplayMode, learningMode, maxDiatonicDegree, rootPc, selectedChord, selectedScale, stackSize]);
+  }, [
+    awfulTolerance,
+    degree,
+    diatonicDisplayMode,
+    learningMode,
+    maxDiatonicDegree,
+    notationMode,
+    rootPc,
+    selectedChord,
+    selectedRoot.label,
+    selectedRoot.letter,
+    selectedScale,
+    stackSize
+  ]);
 
   const degreeChordSummaries = useMemo(
     () =>
       DEGREE_OPTIONS.map(({ degree: optionDegree }) =>
         optionDegree <= maxDiatonicDegree
-          ? describeDiatonicChord(rootPc, selectedScale, optionDegree, stackSize)
+          ? describeDiatonicChord(
+              rootPc,
+              selectedScale,
+              optionDegree,
+              stackSize,
+              selectedRoot.letter,
+              notationMode,
+              awfulTolerance
+            )
           : EMPTY_DIATONIC_CHORD_SUMMARY
       ),
-    [maxDiatonicDegree, rootPc, selectedScale, stackSize]
+    [awfulTolerance, maxDiatonicDegree, notationMode, rootPc, selectedRoot.letter, selectedScale, stackSize]
   );
 
   const highlightedState = useMemo(() => {
@@ -172,7 +229,11 @@ export function App() {
     const legend = OCTAVE_PALETTE.map((paletteItem) => {
       const { octave } = paletteItem;
       const cells = matchedCells.filter((cell) => cell.note.octave === octave);
-      const notes = Array.from(new Set(cells.map((cell) => pcToCompactName(cell.note.pc)))).sort(sortNoteNames);
+      const notes = Array.from(
+        new Set(
+          cells.map((cell) => targetState.targetNameByPc.get(cell.note.pc) ?? baseNameForPitchClass(cell.note.pc))
+        )
+      ).sort(sortNoteNames);
 
       return {
         ...paletteItem,
@@ -183,7 +244,7 @@ export function App() {
     const colorByOctave = new Map<number, string>(OCTAVE_PALETTE.map((item) => [item.octave, item.color]));
 
     return { matchedCells, highlightMap, legend, colorByOctave };
-  }, [currentBox, fretboardState.cells, targetState.targets]);
+  }, [currentBox, fretboardState.cells, targetState.targetNameByPc, targetState.targets]);
 
   const cellMap = useMemo(
     () => new Map(fretboardState.cells.map((cell) => [coordKey(cell), cell])),
@@ -457,13 +518,43 @@ export function App() {
           </Field>
 
           <Field label={learningMode === "named-chord" ? "根音" : "调中心"}>
-            <select value={rootPc} onChange={(event) => setRootPc(Number(event.target.value))}>
-              {PC_COMPACT_NAMES.map((name, pitchClass) => (
-                <option key={name} value={pitchClass}>
-                  {name}
+            <select value={rootNoteId} onChange={(event) => setRootNoteId(event.target.value)}>
+              {ROOT_NOTE_OPTIONS.map((root) => (
+                <option key={root.id} value={root.id}>
+                  {root.label}
                 </option>
               ))}
             </select>
+          </Field>
+
+          <Field label="记谱策略">
+            <div className="segmented">
+              <button
+                className={notationMode === "musician" ? "active" : ""}
+                type="button"
+                onClick={() => setNotationMode("musician")}
+              >
+                演奏者
+              </button>
+              <button
+                className={notationMode === "theorist" ? "active" : ""}
+                type="button"
+                onClick={() => setNotationMode("theorist")}
+              >
+                理论派
+              </button>
+            </div>
+          </Field>
+
+          <Field label="宽容度">
+            <input
+              type="number"
+              min={0}
+              max={12}
+              value={awfulTolerance}
+              disabled={notationMode !== "musician"}
+              onChange={(event) => setAwfulTolerance(clamp(Number(event.target.value), 0, 12))}
+            />
           </Field>
 
           {learningMode === "named-chord" ? (
@@ -633,6 +724,7 @@ export function App() {
                       onUpdateSelection={updateCellSelection}
                       openCell={openCell}
                       pendingBox={pendingBox}
+                      targetNameByPc={targetState.targetNameByPc}
                     />
                   );
                 })}
@@ -691,9 +783,9 @@ export function App() {
           </div>
 
           <div className="target-list">
-            {targetState.targets.map((target) => (
+            {targetState.targets.map((target, index) => (
               <span key={`${target.pc}-${target.order}`}>
-                {target.label}: {pcToCompactName(target.pc)}
+                {target.label}: {targetState.targetDisplayNames[index] ?? baseNameForPitchClass(target.pc)}
               </span>
             ))}
           </div>
@@ -764,7 +856,8 @@ function Row({
   onFinishSelection,
   onUpdateSelection,
   openCell,
-  pendingBox
+  pendingBox,
+  targetNameByPc
 }: {
   box: BoxRange | null;
   cellMap: Map<string, FretCell>;
@@ -778,6 +871,7 @@ function Row({
   onUpdateSelection: (cell: FretCell, event: ReactPointerEvent<HTMLDivElement>) => void;
   openCell?: FretCell;
   pendingBox: BoxRange | null;
+  targetNameByPc: Map<number, string>;
 }) {
   return (
     <>
@@ -801,6 +895,7 @@ function Row({
             onFinishSelection={onFinishSelection}
             onUpdateSelection={onUpdateSelection}
             pendingBox={pendingBox}
+            targetNameByPc={targetNameByPc}
           />
         );
       })}
@@ -818,7 +913,8 @@ function FretCellTile({
   onBeginSelection,
   onFinishSelection,
   onUpdateSelection,
-  pendingBox
+  pendingBox,
+  targetNameByPc
 }: {
   box: BoxRange | null;
   cell?: FretCell;
@@ -830,6 +926,7 @@ function FretCellTile({
   onFinishSelection: () => void;
   onUpdateSelection: (cell: FretCell, event: ReactPointerEvent<HTMLDivElement>) => void;
   pendingBox: BoxRange | null;
+  targetNameByPc: Map<number, string>;
 }) {
   const highlightedCell = cell ? highlightMap.get(coordKey(cell)) : undefined;
   const inBox = cell && box ? isCellInBox(cell, box) : false;
@@ -847,6 +944,8 @@ function FretCellTile({
   ]
     .filter(Boolean)
     .join(" ");
+  const highlightedName =
+    highlightedCell && cell ? (targetNameByPc.get(cell.note.pc) ?? baseNameForPitchClass(cell.note.pc)) : "";
 
   return (
     <div
@@ -861,25 +960,120 @@ function FretCellTile({
       style={{ "--string-color": cellColor, "--note-color": cellColor } as CSSProperties}
       title={
         cell
-          ? `${cell.note.name} · MIDI ${cell.midi}${highlightedCell ? ` · ${formatMatches(highlightedCell.matches)}` : ""}`
+          ? `${highlightedCell ? `${highlightedName}${cell.note.octave}` : cell.note.name} · MIDI ${cell.midi}${
+              highlightedCell ? ` · ${formatMatches(highlightedCell.matches)}` : ""
+            }`
           : undefined
       }
     >
-      {highlightedCell ? <span className="note-dot">{pcToCompactName(highlightedCell.note.pc)}</span> : null}
+      {highlightedCell ? <span className="note-dot">{highlightedName}</span> : null}
     </div>
   );
+}
+
+type TargetRenderContext =
+  | {
+      type: "named-chord";
+      chordOffsets: number[];
+    }
+  | {
+      type: "scale" | "diatonic-chord";
+      degree: number;
+      scaleId: string;
+      scaleLength: number;
+    };
+
+function renderTargetDisplayNames(
+  targets: TargetPitch[],
+  context: TargetRenderContext,
+  rootLetter: number,
+  mode: NotationMode,
+  awfulTolerance: number
+): string[] {
+  const pitchClasses = targets.map((target) => target.pc);
+  const letterTrack =
+    context.type === "named-chord"
+      ? resolveNamedChordLetterOffsets(context.chordOffsets)
+      : resolveScaleLetterOffsets(context.scaleId, context.scaleLength);
+
+  if (letterTrack.kind === "base-only") {
+    return pitchClasses.map(baseNameForPitchClass);
+  }
+
+  const indexes = targetIndexes(targets, context, letterTrack);
+  const records = spellMany(pitchClasses, indexes, rootLetter, letterTrack.letterOffsets);
+
+  return renderNames(records, pitchClasses, mode, awfulTolerance);
+}
+
+function targetIndexes(
+  targets: TargetPitch[],
+  context: TargetRenderContext,
+  letterTrack: Extract<LetterTrackResolution, { kind: "track" }>
+): number[] {
+  if (context.type === "named-chord") {
+    return targets.map((_, index) => index);
+  }
+
+  if (context.type === "scale") {
+    return targets.map((_, index) => index);
+  }
+
+  return targets.map((_, index) => (context.degree - 1 + 2 * index) % letterTrack.letterOffsets.length);
+}
+
+function makeFirstNameByPitchClass(targets: TargetPitch[], names: string[]): Map<number, string> {
+  return targets.reduce((nameByPc, target, index) => {
+    if (!nameByPc.has(target.pc)) {
+      nameByPc.set(target.pc, names[index] ?? baseNameForPitchClass(target.pc));
+    }
+
+    return nameByPc;
+  }, new Map<number, string>());
+}
+
+function describeUniqueTargetNames(targets: TargetPitch[], names: string[]): string {
+  const seen = new Set<number>();
+
+  return targets
+    .reduce<string[]>((uniqueNames, target, index) => {
+      if (!seen.has(target.pc)) {
+        seen.add(target.pc);
+        uniqueNames.push(names[index] ?? baseNameForPitchClass(target.pc));
+      }
+
+      return uniqueNames;
+    }, [])
+    .join(" ");
 }
 
 function describeDiatonicChord(
   rootPc: number,
   scaleTemplate: ScaleTemplate,
   degree: number,
-  stackSize: number
+  stackSize: number,
+  rootLetter: number,
+  mode: NotationMode,
+  awfulTolerance: number
 ): DiatonicChordSummary {
-  return inferChordSummary(diatonicChordTargets(rootPc, scaleTemplate, degree, stackSize));
+  const targets = diatonicChordTargets(rootPc, scaleTemplate, degree, stackSize);
+  const targetDisplayNames = renderTargetDisplayNames(
+    targets,
+    {
+      type: "diatonic-chord",
+      degree,
+      scaleId: scaleTemplate.id,
+      scaleLength: scaleTemplate.offsets.length
+    },
+    rootLetter,
+    mode,
+    awfulTolerance
+  );
+
+  return inferChordSummary(targets, targetDisplayNames);
 }
 
-function inferChordSummary(targets: TargetPitch[]): DiatonicChordSummary {
+function inferChordSummary(targets: TargetPitch[], targetDisplayNames: string[]): DiatonicChordSummary {
   if (targets.length === 0) {
     return {
       fullName: "",
@@ -889,7 +1083,7 @@ function inferChordSummary(targets: TargetPitch[]): DiatonicChordSummary {
   }
 
   const chordRootPc = targets[0].pc;
-  const chordRootName = pcToCompactName(chordRootPc);
+  const chordRootName = targetDisplayNames[0] ?? baseNameForPitchClass(chordRootPc);
   const normalizedOffsets = targets.map((target) => pc(target.pc - chordRootPc));
   const matchedTemplate = CHORD_TEMPLATES.find(
     (template) =>
@@ -905,7 +1099,9 @@ function inferChordSummary(targets: TargetPitch[]): DiatonicChordSummary {
     };
   }
 
-  const noteNames = targets.map((target) => pcToCompactName(target.pc)).join(" ");
+  const noteNames = targets
+    .map((target, index) => targetDisplayNames[index] ?? baseNameForPitchClass(target.pc))
+    .join(" ");
 
   return {
     fullName: `${chordRootName} (${noteNames})`,
