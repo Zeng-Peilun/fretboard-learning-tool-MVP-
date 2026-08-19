@@ -65,14 +65,29 @@ npm run build
 
 ### 1. 核心设计一：选弦数以及调音，对音乐作几何建模
 
-预设好吉他 6、7 弦以及 bass 4、5 弦的标准调弦：
+预设好吉他 6、7 弦以及贝斯 4、5 弦的常用调弦：
 
-|乐器|标准调弦|
-|---|---|
-|6 弦吉他 standard|E2 A2 D3 G3 B3 E4（从低音弦到高音弦）|
-|7 弦吉他 standard|B1 E2 A2 D3 G3 B3 E4（从低音弦到高音弦）|
-|4 弦贝斯 standard|E1 A1 D2 G2（从低音弦到高音弦）|
-|5 弦贝斯 standard|B0 E1 A1 D2 G2（从低音弦到高音弦）|
+|乐器|调弦|音名（从低音弦到高音弦）|
+|---|---|---|
+|6 弦吉他|Standard|E2 A2 D3 G3 B3 E4|
+|6 弦吉他|Drop D|D2 A2 D3 G3 B3 E4|
+|6 弦吉他|Eb Standard|Eb2 Ab2 Db3 Gb3 Bb3 Eb4|
+|6 弦吉他|D Standard|D2 G2 C3 F3 A3 D4|
+|6 弦吉他|Drop C|C2 G2 C3 F3 A3 D4|
+|6 弦吉他|DADGAD|D2 A2 D3 G3 A3 D4|
+|6 弦吉他|Open D|D2 A2 D3 F#3 A3 D4|
+|6 弦吉他|Open G|D2 G2 D3 G3 B3 D4|
+|6 弦吉他|FACGCE|F2 A2 C3 G3 C4 E4|
+|6 弦吉他|DAEAC#E|D2 A2 E3 A3 C#4 E4|
+|7 弦吉他|Standard|B1 E2 A2 D3 G3 B3 E4|
+|4 弦贝斯|Standard|E1 A1 D2 G2|
+|4 弦贝斯|Drop D|D1 A1 D2 G2|
+|4 弦贝斯|Eb Standard|Eb1 Ab1 Db2 Gb2|
+|4 弦贝斯|D Standard|D1 G1 C2 F2|
+|4 弦贝斯|Drop C|C1 G1 C2 F2|
+|4 弦贝斯|BEAD|B0 E1 A1 D2|
+|5 弦贝斯|Standard|B0 E1 A1 D2 G2|
+|5 弦贝斯|Drop A|A0 E1 A1 D2 G2|
 
 此外还一定要有非标准调弦功能。调弦是为了动态确定弦与弦之间的音程关系，这是为了核心设计二作铺垫。
 

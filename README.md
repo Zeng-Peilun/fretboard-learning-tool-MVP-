@@ -70,14 +70,29 @@ The foundation is an ordinary fretted string instrument, such as a 6/7-string gu
 
 ### 1. Core Design I: Select String Count and Tuning, Then Geometrically Model Music
 
-The tool presets the standard tunings for 6/7-string guitars and 4/5-string basses:
+The tool presets common tunings for 6/7-string guitars and 4/5-string basses:
 
-|Instrument|Standard Tuning|
-|---|---|
-|6-string guitar standard|E2 A2 D3 G3 B3 E4, from lowest string to highest string|
-|7-string guitar standard|B1 E2 A2 D3 G3 B3 E4, from lowest string to highest string|
-|4-string bass standard|E1 A1 D2 G2, from lowest string to highest string|
-|5-string bass standard|B0 E1 A1 D2 G2, from lowest string to highest string|
+|Instrument|Tuning|Notes (from lowest string to highest string)|
+|---|---|---|
+|6-string guitar|Standard|E2 A2 D3 G3 B3 E4|
+|6-string guitar|Drop D|D2 A2 D3 G3 B3 E4|
+|6-string guitar|Eb Standard|Eb2 Ab2 Db3 Gb3 Bb3 Eb4|
+|6-string guitar|D Standard|D2 G2 C3 F3 A3 D4|
+|6-string guitar|Drop C|C2 G2 C3 F3 A3 D4|
+|6-string guitar|DADGAD|D2 A2 D3 G3 A3 D4|
+|6-string guitar|Open D|D2 A2 D3 F#3 A3 D4|
+|6-string guitar|Open G|D2 G2 D3 G3 B3 D4|
+|6-string guitar|FACGCE|F2 A2 C3 G3 C4 E4|
+|6-string guitar|DAEAC#E|D2 A2 E3 A3 C#4 E4|
+|7-string guitar|Standard|B1 E2 A2 D3 G3 B3 E4|
+|4-string bass|Standard|E1 A1 D2 G2|
+|4-string bass|Drop D|D1 A1 D2 G2|
+|4-string bass|Eb Standard|Eb1 Ab1 Db2 Gb2|
+|4-string bass|D Standard|D1 G1 C2 F2|
+|4-string bass|Drop C|C1 G1 C2 F2|
+|4-string bass|BEAD|B0 E1 A1 D2|
+|5-string bass|Standard|B0 E1 A1 D2 G2|
+|5-string bass|Drop A|A0 E1 A1 D2 G2|
 
 Non-standard tuning must also be supported. Tuning dynamically determines the interval relationship between strings, which prepares the ground for Core Design II.
 

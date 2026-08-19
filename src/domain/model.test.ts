@@ -123,12 +123,61 @@ describe("fretboard mapping", () => {
     }
   });
 
-  it("keeps standard preset open-string interval structures", () => {
+  it("contains common guitar and bass tuning presets", () => {
+    const expectedNotesByPreset = new Map([
+      ["guitar-6-standard", ["E2", "A2", "D3", "G3", "B3", "E4"]],
+      ["guitar-6-drop-d", ["D2", "A2", "D3", "G3", "B3", "E4"]],
+      ["guitar-6-eb-standard", ["Eb2", "Ab2", "Db3", "Gb3", "Bb3", "Eb4"]],
+      ["guitar-6-d-standard", ["D2", "G2", "C3", "F3", "A3", "D4"]],
+      ["guitar-6-drop-c", ["C2", "G2", "C3", "F3", "A3", "D4"]],
+      ["guitar-6-dadgad", ["D2", "A2", "D3", "G3", "A3", "D4"]],
+      ["guitar-6-open-d", ["D2", "A2", "D3", "F#3", "A3", "D4"]],
+      ["guitar-6-open-g", ["D2", "G2", "D3", "G3", "B3", "D4"]],
+      ["guitar-6-facgce", ["F2", "A2", "C3", "G3", "C4", "E4"]],
+      ["guitar-6-daeac-sharp-e", ["D2", "A2", "E3", "A3", "C#4", "E4"]],
+      ["guitar-7-standard", ["B1", "E2", "A2", "D3", "G3", "B3", "E4"]],
+      ["bass-4-standard", ["E1", "A1", "D2", "G2"]],
+      ["bass-5-standard", ["B0", "E1", "A1", "D2", "G2"]],
+      ["bass-4-drop-d", ["D1", "A1", "D2", "G2"]],
+      ["bass-4-eb-standard", ["Eb1", "Ab1", "Db2", "Gb2"]],
+      ["bass-4-d-standard", ["D1", "G1", "C2", "F2"]],
+      ["bass-4-drop-c", ["C1", "G1", "C2", "F2"]],
+      ["bass-4-bead", ["B0", "E1", "A1", "D2"]],
+      ["bass-5-drop-a", ["A0", "E1", "A1", "D2", "G2"]]
+    ]);
+    const presetIds = TUNING_PRESETS.map((preset) => preset.id);
+
+    expect(new Set(presetIds).size).toBe(presetIds.length);
+
+    for (const [presetId, expectedNotes] of expectedNotesByPreset) {
+      const preset = TUNING_PRESETS.find((item) => item.id === presetId);
+
+      expect(preset?.notes).toEqual(expectedNotes);
+      expect(preset?.defaultFretCount).toBe(24);
+    }
+  });
+
+  it("keeps preset open-string interval structures", () => {
     const expectedIntervalsByPreset = new Map([
       ["guitar-6-standard", [5, 5, 5, 4, 5]],
+      ["guitar-6-drop-d", [7, 5, 5, 4, 5]],
+      ["guitar-6-eb-standard", [5, 5, 5, 4, 5]],
+      ["guitar-6-d-standard", [5, 5, 5, 4, 5]],
+      ["guitar-6-drop-c", [7, 5, 5, 4, 5]],
+      ["guitar-6-dadgad", [7, 5, 5, 2, 5]],
+      ["guitar-6-open-d", [7, 5, 4, 3, 5]],
+      ["guitar-6-open-g", [5, 7, 5, 4, 3]],
+      ["guitar-6-facgce", [4, 3, 7, 5, 4]],
+      ["guitar-6-daeac-sharp-e", [7, 7, 5, 4, 3]],
       ["guitar-7-standard", [5, 5, 5, 5, 4, 5]],
       ["bass-4-standard", [5, 5, 5]],
-      ["bass-5-standard", [5, 5, 5, 5]]
+      ["bass-5-standard", [5, 5, 5, 5]],
+      ["bass-4-drop-d", [7, 5, 5]],
+      ["bass-4-eb-standard", [5, 5, 5]],
+      ["bass-4-d-standard", [5, 5, 5]],
+      ["bass-4-drop-c", [7, 5, 5]],
+      ["bass-4-bead", [5, 5, 5]],
+      ["bass-5-drop-a", [7, 5, 5, 5]]
     ]);
 
     for (const preset of TUNING_PRESETS) {

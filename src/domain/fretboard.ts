@@ -18,6 +18,69 @@ export const TUNING_PRESETS: TuningPreset[] = [
     defaultFretCount: 24
   },
   {
+    id: "guitar-6-drop-d",
+    label: "6弦吉他 Drop D",
+    instrument: "guitar",
+    notes: ["D2", "A2", "D3", "G3", "B3", "E4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-eb-standard",
+    label: "6弦吉他 Eb Standard",
+    instrument: "guitar",
+    notes: ["Eb2", "Ab2", "Db3", "Gb3", "Bb3", "Eb4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-d-standard",
+    label: "6弦吉他 D Standard",
+    instrument: "guitar",
+    notes: ["D2", "G2", "C3", "F3", "A3", "D4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-drop-c",
+    label: "6弦吉他 Drop C",
+    instrument: "guitar",
+    notes: ["C2", "G2", "C3", "F3", "A3", "D4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-dadgad",
+    label: "6弦吉他 DADGAD",
+    instrument: "guitar",
+    notes: ["D2", "A2", "D3", "G3", "A3", "D4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-open-d",
+    label: "6弦吉他 Open D",
+    instrument: "guitar",
+    notes: ["D2", "A2", "D3", "F#3", "A3", "D4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-open-g",
+    label: "6弦吉他 Open G",
+    instrument: "guitar",
+    notes: ["D2", "G2", "D3", "G3", "B3", "D4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-facgce",
+    label: "6弦吉他 FACGCE",
+    instrument: "guitar",
+    notes: ["F2", "A2", "C3", "G3", "C4", "E4"],
+    defaultFretCount: 24
+  },
+  {
+    id: "guitar-6-daeac-sharp-e",
+    label: "6弦吉他 DAEAC#E",
+    instrument: "guitar",
+    notes: ["D2", "A2", "E3", "A3", "C#4", "E4"],
+    defaultFretCount: 24
+  },
+  {
     id: "guitar-7-standard",
     label: "7弦吉他 Standard",
     instrument: "guitar",
@@ -36,6 +99,48 @@ export const TUNING_PRESETS: TuningPreset[] = [
     label: "5弦贝斯 Standard",
     instrument: "bass",
     notes: ["B0", "E1", "A1", "D2", "G2"],
+    defaultFretCount: 24
+  },
+  {
+    id: "bass-4-drop-d",
+    label: "4弦贝斯 Drop D",
+    instrument: "bass",
+    notes: ["D1", "A1", "D2", "G2"],
+    defaultFretCount: 24
+  },
+  {
+    id: "bass-4-eb-standard",
+    label: "4弦贝斯 Eb Standard",
+    instrument: "bass",
+    notes: ["Eb1", "Ab1", "Db2", "Gb2"],
+    defaultFretCount: 24
+  },
+  {
+    id: "bass-4-d-standard",
+    label: "4弦贝斯 D Standard",
+    instrument: "bass",
+    notes: ["D1", "G1", "C2", "F2"],
+    defaultFretCount: 24
+  },
+  {
+    id: "bass-4-drop-c",
+    label: "4弦贝斯 Drop C",
+    instrument: "bass",
+    notes: ["C1", "G1", "C2", "F2"],
+    defaultFretCount: 24
+  },
+  {
+    id: "bass-4-bead",
+    label: "4弦贝斯 BEAD",
+    instrument: "bass",
+    notes: ["B0", "E1", "A1", "D2"],
+    defaultFretCount: 24
+  },
+  {
+    id: "bass-5-drop-a",
+    label: "5弦贝斯 Drop A",
+    instrument: "bass",
+    notes: ["A0", "E1", "A1", "D2", "G2"],
     defaultFretCount: 24
   }
 ];
